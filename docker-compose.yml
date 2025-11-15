@@ -1,0 +1,22 @@
+version: '3.9'
+
+name: temperature-checker
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: temp-checker-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: temp_checker      # Change to your desired username
+      POSTGRES_PASSWORD: temp_checker  # Change to your desired password
+      POSTGRES_DB: temp_checker    # Change to your desired database name
+    ports:
+      - "5432:5432"   # Expose the default PostgreSQL port
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persist data using volumes
+
+
+volumes:
+  postgres_data:
+    driver: local
