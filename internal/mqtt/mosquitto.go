@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
+	"math/rand"
+	"strconv"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -19,7 +20,7 @@ type MosquittoClient struct {
 func NewMosquittoClient(deps Dependencies) (*MosquittoClient, error) {
 	opts := mqtt.NewClientOptions().
 		AddBroker(deps.Config.URL).
-		SetClientID(deps.Config.ClientID).
+		SetClientID(deps.Config.ClientID + "-" + strconv.Itoa(rand.Intn(1000))).
 		SetUsername(deps.Config.Username).
 		SetPassword(deps.Config.Password).
 		SetKeepAlive(30 * time.Second).
@@ -38,8 +39,8 @@ func NewMosquittoClient(deps Dependencies) (*MosquittoClient, error) {
 	}, nil
 }
 
-func (c *MosquittoClient) Publish(topic string, payload []string) error {
-	token := c.c.Publish(topic, 0, false, strings.Join(payload, c.separator))
+func (c *MosquittoClient) Publish(topic string, payload []MessagePayload) error {
+	token := c.c.Publish(topic, 0, false, decode(payload, c.separator))
 	if token.Wait() && token.Error() != nil {
 		return fmt.Errorf("mqtt publish: %w", token.Error())
 	}
@@ -48,16 +49,15 @@ func (c *MosquittoClient) Publish(topic string, payload []string) error {
 
 func (c *MosquittoClient) Subscribe(ctx context.Context, topic string, handler MessageHandler) error {
 	token := c.c.Subscribe(topic, 0, func(ic mqtt.Client, msg mqtt.Message) {
-		fmt.Printf("topic=%s payload=%s\n", msg.Topic(), string(msg.Payload()))
-
 		handler(ctx, c, Message{
 			Topic:   msg.Topic(),
-			Payload: strings.Split(string(msg.Payload()), c.separator),
+			Payload: encode(string(msg.Payload()), c.separator),
 		})
 	})
 	if token.Wait() && token.Error() != nil {
 		return fmt.Errorf("mqtt subscribe: %w", token.Error())
 	}
+
 	return nil
 }
 

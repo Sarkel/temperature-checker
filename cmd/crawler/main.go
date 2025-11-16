@@ -8,6 +8,7 @@ import (
 	"temperature-checker/internal/core/meteo"
 	"temperature-checker/internal/db"
 	"temperature-checker/internal/logger"
+	"temperature-checker/internal/mqtt"
 )
 
 func main() {
@@ -29,15 +30,27 @@ func main() {
 	defer db.Close(conManager, log)
 
 	if err != nil {
-		log.Error("failed to create database connection", err)
+		panic(fmt.Errorf("failed to create database connection: %w", err))
 	}
 
 	meteoClient := meteo.NewOpenMeteoClient(&meteo.OpenMeteoDependencies{})
+
+	broker, err := mqtt.NewMosquittoClient(mqtt.Dependencies{
+		Logger: log,
+		Config: &cfg.MQTTBroker,
+	})
+
+	if err != nil {
+		panic(fmt.Errorf("failed to create mqtt client: %w", err))
+	}
+
+	defer broker.Close()
 
 	crawlerService := crawler.NewService(&crawler.ServiceDependencies{
 		DB:          conManager,
 		Logger:      log,
 		MeteoClient: meteoClient,
+		Broker:      broker,
 	})
 
 	rootCtx := context.Background()

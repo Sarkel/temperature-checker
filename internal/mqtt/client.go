@@ -10,9 +10,10 @@ type Dependencies struct {
 	Logger *slog.Logger
 	Config *config.MQTTBrokerConfig
 }
+type MessagePayload []string
 
 type Client interface {
-	Publish(topic string, payload []string) error
+	Publish(topic string, payload []MessagePayload) error
 	Subscribe(ctx context.Context, topic string, handler MessageHandler) error
 	Unsubscribe(topic string) error
 	Close()
@@ -20,7 +21,7 @@ type Client interface {
 
 type Message struct {
 	Topic   string
-	Payload []string
+	Payload []MessagePayload
 }
 
 type MessageHandler func(context.Context, Client, Message)

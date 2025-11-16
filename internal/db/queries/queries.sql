@@ -8,6 +8,7 @@ returning temperature_data_id;
 -- name: GetAPILocationSensors :many
 select ls.location_sensor_id,
        ls.sensor_sid,
+       l.location_sid,
        l.location_name,
        l.latitude,
        l.longitude,

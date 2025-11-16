@@ -43,32 +43,22 @@ func (s *Service) processMessage(ctx context.Context, _ mqtt.Client, msg mqtt.Me
 	// todo: move logic to save to DB to separate goroutine with queue process
 	q := s.db.WithQ()
 
-	if len(msg.Payload) != 2 {
-		s.l.Error("invalid payload length", "payload", msg.Payload)
-		return
-	}
-
 	locationSensorId, err := s.getLocationSensorId(ctx, &msg)
 
 	if err != nil {
 		s.l.Error("failed to get location sensor id", "err", err)
 	}
 
-	sensorValue, sensorTime, err := s.parseSensorData(&msg)
+	sensorData, err := s.parseSensorData(locationSensorId, &msg)
 
 	if err != nil {
 		s.l.Error("failed to parse sensor data", "err", err)
 	}
 
-	_, err = q.CreateTemperatureData(ctx, genDb.CreateTemperatureDataParams{
-		LocationSensorIds: []int32{locationSensorId},
-		Values:            []float64{sensorValue},
-		Timestamps:        []time.Time{sensorTime},
-	})
-
-	if err != nil {
+	if _, err := q.CreateTemperatureData(ctx, sensorData); err != nil {
 		s.l.Error("failed to save temperature data", "err", err)
 	}
+	s.l.Info("temperature data saved", "topic", msg.Topic)
 }
 
 func (s *Service) getLocationSensorId(ctx context.Context, msg *mqtt.Message) (int32, error) {
@@ -90,18 +80,40 @@ func (s *Service) getLocationSensorId(ctx context.Context, msg *mqtt.Message) (i
 	return locationSensorId, nil
 }
 
-func (s *Service) parseSensorData(msg *mqtt.Message) (float64, time.Time, error) {
-	sensorValue, err := strconv.ParseFloat(msg.Payload[1], 64)
+func (s *Service) parseSensorData(locationSensorId int32, msg *mqtt.Message) (genDb.CreateTemperatureDataParams, error) {
+	n := len(msg.Payload)
 
-	if err != nil {
-		return -1., time.Time{}, fmt.Errorf("failed to parse sensor value %w", err)
+	locationSensorIds := make([]int32, n)
+	sensorValues := make([]float64, n)
+	sensorTimes := make([]time.Time, n)
+
+	for i, p := range msg.Payload {
+		if len(p) != 2 {
+			return genDb.CreateTemperatureDataParams{}, fmt.Errorf("invalid payload length %d", len(p))
+		}
+
+		locationSensorIds[i] = locationSensorId
+
+		sensorValue, err := strconv.ParseFloat(p[0], 64)
+
+		if err != nil {
+			return genDb.CreateTemperatureDataParams{}, fmt.Errorf("failed to parse sensor value %w", err)
+		}
+
+		sensorValues[i] = sensorValue
+
+		sensorTime, err := time.Parse(time.RFC3339, p[1])
+
+		if err != nil {
+			return genDb.CreateTemperatureDataParams{}, fmt.Errorf("failed to parse sensor time %w", err)
+		}
+
+		sensorTimes[i] = sensorTime
 	}
 
-	sensorTime, err := time.Parse(time.RFC3339, msg.Payload[2])
-
-	if err != nil {
-		return -1., time.Time{}, fmt.Errorf("failed to parse sensor time %w", err)
-	}
-
-	return sensorValue, sensorTime, nil
+	return genDb.CreateTemperatureDataParams{
+		LocationSensorIds: locationSensorIds,
+		Values:            sensorValues,
+		Timestamps:        sensorTimes,
+	}, nil
 }

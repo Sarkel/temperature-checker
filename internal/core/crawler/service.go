@@ -9,6 +9,7 @@ import (
 	"temperature-checker/internal/core/meteo"
 	"temperature-checker/internal/db"
 	dbGen "temperature-checker/internal/db/gen"
+	"temperature-checker/internal/mqtt"
 	"time"
 )
 
@@ -16,12 +17,14 @@ type ServiceDependencies struct {
 	DB          *db.ConManager
 	Logger      *slog.Logger
 	MeteoClient meteo.Client
+	Broker      mqtt.Client
 }
 
 type Service struct {
 	db *db.ConManager
 	l  *slog.Logger
 	mc meteo.Client
+	b  mqtt.Client
 }
 
 func NewService(deps *ServiceDependencies) *Service {
@@ -29,6 +32,7 @@ func NewService(deps *ServiceDependencies) *Service {
 		db: deps.DB,
 		l:  deps.Logger,
 		mc: deps.MeteoClient,
+		b:  deps.Broker,
 	}
 }
 
@@ -77,38 +81,33 @@ func (s *Service) pullWeatherUpdate(ctx context.Context, l dbGen.GetAPILocationS
 		Lat: l.Latitude,
 		Lon: l.Longitude,
 	})
+
 	if err != nil {
 		return fmt.Errorf("get weather: %w", err)
 	}
 
-	data := s.processResponse(l.LocationSensorID, res)
+	// todo: create topic utilities
+	topic := fmt.Sprintf("sensors/%s/%s", l.LocationSid, l.SensorSid)
 
-	if _, err := s.db.WithQ().CreateTemperatureData(ctx, data); err != nil {
-		return fmt.Errorf("create temperature data: %w", err)
+	data := s.processResponse(res)
+
+	if err := s.b.Publish(topic, data); err != nil {
+		return fmt.Errorf("publish temperature data: %w", err)
 	}
 
-	s.l.Info("weather data for location saved", "locationName", l.LocationName, "sensor", l.SensorID)
+	s.l.Info("weather data for location saved", "locationName", l.LocationName, "sensor", l.SensorSid)
 
 	return nil
 }
 
-func (s *Service) processResponse(lsId int32, res []meteo.WeatherData) dbGen.CreateTemperatureDataParams {
-
+func (s *Service) processResponse(res []meteo.WeatherData) []mqtt.MessagePayload {
 	n := len(res)
 
-	sensorIds := make([]int32, n)
-	values := make([]float64, n)
-	timestamps := make([]time.Time, n)
+	results := make([]mqtt.MessagePayload, n)
 
 	for i, r := range res {
-		sensorIds[i] = lsId
-		values[i] = r.Temperature
-		timestamps[i] = r.Timestamp
+		results[i] = []string{fmt.Sprintf("%.2f", r.Temperature), r.Timestamp.Format(time.RFC3339)}
 	}
 
-	return dbGen.CreateTemperatureDataParams{
-		LocationSensorIds: sensorIds,
-		Values:            values,
-		Timestamps:        timestamps,
-	}
+	return results
 }

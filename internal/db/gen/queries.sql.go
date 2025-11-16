@@ -52,6 +52,7 @@ func (q *Queries) CreateTemperatureData(ctx context.Context, arg CreateTemperatu
 const getAPILocationSensors = `-- name: GetAPILocationSensors :many
 select ls.location_sensor_id,
        ls.sensor_sid,
+       l.location_sid,
        l.location_name,
        l.latitude,
        l.longitude,
@@ -64,6 +65,7 @@ where ls.type = 'api'
 type GetAPILocationSensorsRow struct {
 	LocationSensorID int32
 	SensorSid        string
+	LocationSid      string
 	LocationName     string
 	Latitude         float64
 	Longitude        float64
@@ -82,6 +84,7 @@ func (q *Queries) GetAPILocationSensors(ctx context.Context) ([]GetAPILocationSe
 		if err := rows.Scan(
 			&i.LocationSensorID,
 			&i.SensorSid,
+			&i.LocationSid,
 			&i.LocationName,
 			&i.Latitude,
 			&i.Longitude,
