@@ -15,6 +15,16 @@ services:
       - "5432:5432"   # Expose the default PostgreSQL port
     volumes:
       - postgres_data:/var/lib/postgresql/data # Persist data using volumes
+  mosquitto:
+    image: eclipse-mosquitto:2.0.18
+    container_name: temp-checker-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
 
 
 volumes:

@@ -30,6 +30,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getAPILocationSensorsStmt, err = db.PrepareContext(ctx, getAPILocationSensors); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAPILocationSensors: %w", err)
 	}
+	if q.getLocationSensorBySensorIdStmt, err = db.PrepareContext(ctx, getLocationSensorBySensorId); err != nil {
+		return nil, fmt.Errorf("error preparing query GetLocationSensorBySensorId: %w", err)
+	}
 	return &q, nil
 }
 
@@ -43,6 +46,11 @@ func (q *Queries) Close() error {
 	if q.getAPILocationSensorsStmt != nil {
 		if cerr := q.getAPILocationSensorsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getAPILocationSensorsStmt: %w", cerr)
+		}
+	}
+	if q.getLocationSensorBySensorIdStmt != nil {
+		if cerr := q.getLocationSensorBySensorIdStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getLocationSensorBySensorIdStmt: %w", cerr)
 		}
 	}
 	return err
@@ -82,17 +90,19 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                        DBTX
-	tx                        *sql.Tx
-	createTemperatureDataStmt *sql.Stmt
-	getAPILocationSensorsStmt *sql.Stmt
+	db                              DBTX
+	tx                              *sql.Tx
+	createTemperatureDataStmt       *sql.Stmt
+	getAPILocationSensorsStmt       *sql.Stmt
+	getLocationSensorBySensorIdStmt *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                        tx,
-		tx:                        tx,
-		createTemperatureDataStmt: q.createTemperatureDataStmt,
-		getAPILocationSensorsStmt: q.getAPILocationSensorsStmt,
+		db:                              tx,
+		tx:                              tx,
+		createTemperatureDataStmt:       q.createTemperatureDataStmt,
+		getAPILocationSensorsStmt:       q.getAPILocationSensorsStmt,
+		getLocationSensorBySensorIdStmt: q.getLocationSensorBySensorIdStmt,
 	}
 }

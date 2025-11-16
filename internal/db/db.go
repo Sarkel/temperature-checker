@@ -58,3 +58,9 @@ func (c *ConManager) WithQ() *sqlc.Queries {
 func (c *ConManager) Close() error {
 	return c.db.Close()
 }
+
+func Close(conManager *ConManager, log *slog.Logger) {
+	if err := conManager.Close(); err != nil {
+		log.Error("failed to close database connection", err)
+	}
+}

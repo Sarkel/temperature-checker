@@ -51,19 +51,19 @@ func (q *Queries) CreateTemperatureData(ctx context.Context, arg CreateTemperatu
 
 const getAPILocationSensors = `-- name: GetAPILocationSensors :many
 select ls.location_sensor_id,
-       ls.sensor_id,
+       ls.sensor_sid,
        l.location_name,
        l.latitude,
        l.longitude,
        l.location_id
-from temp_checker.location_sensor AS ls
-         join temp_checker.location AS l on ls.location_id = l.location_id
+from temp_checker.location_sensor as ls
+         join temp_checker.location as l on ls.location_id = l.location_id
 where ls.type = 'api'
 `
 
 type GetAPILocationSensorsRow struct {
 	LocationSensorID int32
-	SensorID         string
+	SensorSid        string
 	LocationName     string
 	Latitude         float64
 	Longitude        float64
@@ -81,7 +81,7 @@ func (q *Queries) GetAPILocationSensors(ctx context.Context) ([]GetAPILocationSe
 		var i GetAPILocationSensorsRow
 		if err := rows.Scan(
 			&i.LocationSensorID,
-			&i.SensorID,
+			&i.SensorSid,
 			&i.LocationName,
 			&i.Latitude,
 			&i.Longitude,
@@ -98,4 +98,23 @@ func (q *Queries) GetAPILocationSensors(ctx context.Context) ([]GetAPILocationSe
 		return nil, err
 	}
 	return items, nil
+}
+
+const getLocationSensorBySensorId = `-- name: GetLocationSensorBySensorId :one
+select ls.location_sensor_id
+from temp_checker.location_sensor as ls
+         join temp_checker.location as l on ls.location_id = l.location_id
+where ls.sensor_sid = $1 and l.location_sid = $2
+`
+
+type GetLocationSensorBySensorIdParams struct {
+	SensorSid   string
+	LocationSid string
+}
+
+func (q *Queries) GetLocationSensorBySensorId(ctx context.Context, arg GetLocationSensorBySensorIdParams) (int32, error) {
+	row := q.queryRow(ctx, q.getLocationSensorBySensorIdStmt, getLocationSensorBySensorId, arg.SensorSid, arg.LocationSid)
+	var location_sensor_id int32
+	err := row.Scan(&location_sensor_id)
+	return location_sensor_id, err
 }

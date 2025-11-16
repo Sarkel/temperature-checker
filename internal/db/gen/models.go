@@ -57,12 +57,13 @@ type TempCheckerLocation struct {
 	LocationName string
 	Latitude     float64
 	Longitude    float64
+	LocationSid  string
 }
 
 type TempCheckerLocationSensor struct {
 	LocationSensorID int32
 	LocationID       int32
-	SensorID         string
+	SensorSid        string
 	Type             TempCheckerSensorType
 }
 

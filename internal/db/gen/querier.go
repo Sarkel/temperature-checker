@@ -11,6 +11,7 @@ import (
 type Querier interface {
 	CreateTemperatureData(ctx context.Context, arg CreateTemperatureDataParams) ([]int32, error)
 	GetAPILocationSensors(ctx context.Context) ([]GetAPILocationSensorsRow, error)
+	GetLocationSensorBySensorId(ctx context.Context, arg GetLocationSensorBySensorIdParams) (int32, error)
 }
 
 var _ Querier = (*Queries)(nil)

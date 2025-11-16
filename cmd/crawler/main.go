@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"temperature-checker/internal/config"
 	"temperature-checker/internal/core/crawler"
 	"temperature-checker/internal/core/meteo"
@@ -27,11 +26,7 @@ func main() {
 		Config: &cfg.Database,
 	})
 
-	defer func(conManager *db.ConManager, log *slog.Logger) {
-		if err := conManager.Close(); err != nil {
-			log.Error("failed to close database connection", err)
-		}
-	}(conManager, log)
+	defer db.Close(conManager, log)
 
 	if err != nil {
 		log.Error("failed to create database connection", err)
